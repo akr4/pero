@@ -15,4 +15,16 @@ A command to list project directories (like du command for projects)
 ./android-floating-action-button: Gradle (155,648)
 ./android-floating-action-button/sample: Gradle (782,336)
 ./react-redux-realworld-example-app: npm (171,016,192)
+
+...
+
+Statistics
+==========
+npm: 16, 3,317,547,008
+Gradle: 33, 766,279,680
+Maven: 46, 0
+sbt: 40, 480,518,144
+Cargo: 42, 300,384,256
+==========
+Total: 177, 4,864,729,088
 ```
