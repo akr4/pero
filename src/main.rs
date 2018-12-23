@@ -1,6 +1,7 @@
 extern crate clap;
 extern crate walkdir;
 
+use std::collections::HashMap;
 use std::path::Path;
 
 use project::Project;
@@ -43,7 +44,7 @@ impl Iterator for ProjectIterator {
     }
 }
 
-fn format_size(size: u64) -> String {
+fn format_number(size: u64) -> String {
     let mut buf = String::new();
     for (c, i) in size.to_string().as_str().chars().rev().zip(0..) {
         if i != 0 && i % 3 == 0 {
@@ -67,6 +68,15 @@ fn detect_project(path: &Path) -> Option<Box<Project>> {
     detectors.iter().flat_map(|x| x(path)).next()
 }
 
+type Stats = (u64, u64);
+
+fn calc_stats<'a, ITER>(projects: ITER) -> Stats
+    where ITER: Iterator<Item=&'a Box<Project>> {
+    projects.fold((0, 0), |(count, size), p| {
+        (count + 1, size + p.size().ok().unwrap_or(0))
+    })
+}
+
 fn main() {
     let matches = clap::App::new("pero")
         .version(option_env!("COMMIT_HASH").unwrap_or("-"))
@@ -74,14 +84,34 @@ fn main() {
         .get_matches();
     let dir = matches.value_of("DIR").unwrap();
 
+    let mut projects_map = HashMap::new();
     for p in ProjectIterator::new(dir) {
         println!(
             "{}: {} ({})",
             p.path().display(),
             p.type_name(),
             p.size()
-                .map(format_size)
+                .map(format_number)
                 .unwrap_or_else(|_| "-".to_string())
         );
+
+        let type_name = p.type_name().to_string();
+        let mut projects = projects_map.entry(type_name).or_insert(Vec::new());
+        projects.push(p);
     }
+    let stats: HashMap<String, Stats> = projects_map.iter().map(|(project_type, projects)| {
+        let it = projects.iter();
+        (project_type.clone(), calc_stats(it))
+    }).collect();
+
+    println!("Statistics");
+    println!("==========");
+    for (project_type, (count, size)) in &stats {
+        println!("{}: {}, {}", project_type, format_number(*count), format_number(*size));
+    }
+    let total_stats: Stats = stats.iter().fold((0, 0), |acc, x| {
+        (acc.0 + (x.1).0, acc.1 + (x.1).1)
+    });
+    println!("==========");
+    println!("Total: {}, {}", format_number(total_stats.0), format_number(total_stats.1));
 }
