@@ -26,7 +26,8 @@ sbt: 36 projects, 287,334,400 bytes
 Gradle: 20 projects, 1,388,544 bytes
 Maven: 42 projects, 0 bytes
 ----------
-Total: 142 projects, 915,906,560 bytes```
+Total: 142 projects, 915,906,560 bytes
+```
 
 ## Supported project types
 - Maven
