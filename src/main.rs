@@ -1,4 +1,5 @@
 extern crate clap;
+extern crate colored;
 extern crate walkdir;
 
 use std::collections::HashMap;
@@ -71,47 +72,101 @@ fn detect_project(path: &Path) -> Option<Box<Project>> {
 type Stats = (u64, u64);
 
 fn calc_stats<'a, ITER>(projects: ITER) -> Stats
-    where ITER: Iterator<Item=&'a Box<Project>> {
+where
+    ITER: Iterator<Item = &'a Box<Project>>,
+{
     projects.fold((0, 0), |(count, size), p| {
         (count + 1, size + p.size().ok().unwrap_or(0))
     })
 }
 
+enum ColorOption {
+    ALWAYS,
+    NEVER,
+}
+
+impl ColorOption {
+    fn from(s: &str) -> ColorOption {
+        match s {
+            "always" => ColorOption::ALWAYS,
+            _ => ColorOption::NEVER,
+        }
+    }
+}
+
 fn main() {
     let matches = clap::App::new("pero")
-        .version(option_env!("COMMIT_HASH").unwrap_or("-"))
+        .version(option_env!("COMMIT_HASH").unwrap_or(""))
         .arg(clap::Arg::with_name("DIR").required(true))
+        .arg(
+            clap::Arg::with_name("color")
+                .short("c")
+                .long("color")
+                .help("Control output color: always (default), never")
+                .takes_value(true),
+        )
         .get_matches();
     let dir = matches.value_of("DIR").unwrap();
 
+    let color_option = ColorOption::from(matches.value_of("color").unwrap_or("always"));
+    if let ColorOption::NEVER = color_option {
+        colored::control::SHOULD_COLORIZE.set_override(false)
+    }
+
     let mut projects_map = HashMap::new();
     for p in ProjectIterator::new(dir) {
-        println!(
-            "{}: {} ({})",
-            p.path().display(),
-            p.type_name(),
-            p.size()
-                .map(format_number)
-                .unwrap_or_else(|_| "-".to_string())
-        );
+        print_project(&*p);
 
         let type_name = p.type_name().to_string();
-        let mut projects = projects_map.entry(type_name).or_insert(Vec::new());
+        let mut projects = projects_map.entry(type_name).or_insert_with(Vec::new);
         projects.push(p);
     }
-    let stats: HashMap<String, Stats> = projects_map.iter().map(|(project_type, projects)| {
-        let it = projects.iter();
-        (project_type.clone(), calc_stats(it))
-    }).collect();
+    let stats: HashMap<String, Stats> = projects_map
+        .iter()
+        .map(|(project_type, projects)| {
+            let it = projects.iter();
+            (project_type.clone(), calc_stats(it))
+        })
+        .collect();
 
-    println!("Statistics");
-    println!("==========");
-    for (project_type, (count, size)) in &stats {
-        println!("{}: {}, {}", project_type, format_number(*count), format_number(*size));
+    print_statistics(&stats);
+}
+
+fn print_project(project: &Project) {
+    use colored::*;
+    println!(
+        "{}: {} ({})",
+        project.path().display(),
+        project.type_name().blue(),
+        project
+            .size()
+            .map(format_number)
+            .unwrap_or_else(|_| "-".to_string())
+            .bright_white()
+    );
+}
+
+fn print_statistics(stats: &HashMap<String, Stats>) {
+    use colored::*;
+    println!();
+    println!("{}", "Statistics".green().bold());
+    println!("{}", "==========".white());
+    for (project_type, (count, size)) in stats {
+        println!(
+            "{}: {} projects, {} bytes",
+            project_type.blue(),
+            format_number(*count).bright_white(),
+            format_number(*size).bright_white()
+        );
     }
-    let total_stats: Stats = stats.iter().fold((0, 0), |acc, x| {
-        (acc.0 + (x.1).0, acc.1 + (x.1).1)
-    });
-    println!("==========");
-    println!("Total: {}, {}", format_number(total_stats.0), format_number(total_stats.1));
+    let total_stats: Stats = stats
+        .iter()
+        .fold((0, 0), |acc, x| (acc.0 + (x.1).0, acc.1 + (x.1).1));
+    println!("{}", "----------".white());
+    println!(
+        "{}: {} projects, {} bytes",
+        "Total".blue(),
+        format_number(total_stats.0).bright_white(),
+        format_number(total_stats.1).bright_white()
+    );
 }
