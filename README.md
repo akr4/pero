@@ -1,5 +1,5 @@
 # pero
-A command to list project directories (like du command for projects)
+Command line tool to list build directories (like du command for projects)
 
 ```
 % cargo install
