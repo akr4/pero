@@ -1,6 +1,8 @@
 # pero
 Command line tool to list build directories (like du command for projects)
 
+[![CircleCI](https://circleci.com/gh/akr4/pero.svg?style=svg)](https://circleci.com/gh/akr4/pero)
+
 ```
 % cargo install
 
