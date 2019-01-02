@@ -37,3 +37,7 @@ Total: 142 projects, 915,906,560 bytes
 - sbt
 - Cargo
 - npm
+
+## LICENSE
+
+MIT
